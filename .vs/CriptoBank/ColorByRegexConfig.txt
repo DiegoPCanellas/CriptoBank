@@ -1,0 +1,9 @@
+Este arquivo contém regras para colorir guias de documento por expressões regulares. Cada linha contém uma expressão regular que será testada em relação ao caminho de um arquivo. Todos os arquivos que correspondem a uma expressão regular compartilharão uma cor.
+// As expressões regulares serão correspondidas na ordem em que aparecerem neste arquivo. Consulte https://docs.microsoft.com/en-us/dotnet/standard/base-types/regular-expressions for syntax.
+// Edite esse arquivo e salve para ver as alterações aplicadas imediatamente. Todos os erros encontrados durante a análise ou avaliação de expressões aparecerão no arquivo xml do Log de Atividades.
+// Você pode personalizar a cor atribuída aqualquer grupo de arquivos clicando com o botão direito do mouse na guia e escolhendo " Definir Cor da Guia."
+^.*\.cs$
+^.*\.fs$
+^.*\.vb$
+^.*\.cp?p?$
+^.*\.hp?p?$
