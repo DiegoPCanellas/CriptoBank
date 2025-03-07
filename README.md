@@ -1,190 +1,152 @@
-Bank Transactions API - Ethereum Simulation
+# CriptoBank
 
-Overview
+## Overview
 
-This project is an API for bank transactions that simulates Ethereum value in real-time. It was developed using C# and .NET, following best practices such as Clean Architecture and Dependency Injection. The API provides a secure and scalable environment for handling banking transactions, ensuring authentication via JWT and data persistence through Entity Framework.
+CriptoBank é uma API de transações bancárias que simula o valor do Ethereum em tempo real. Desenvolvida em C# e .NET, segue boas práticas como Clean Architecture e Injeção de Dependência. A API garante um ambiente seguro e escalável para transações bancárias, utilizando autenticação JWT e persistência de dados com Entity Framework.
 
-Features
+## Features
 
-Error Handling Middleware: A custom middleware to handle request errors and provide standardized responses.
+- **Middleware de Tratamento de Erros**: Captura erros globalmente e padroniza as respostas.
+- **Autenticação JWT**: Garante acesso seguro aos endpoints.
+- **Clean Architecture**: Segrega responsabilidades em diferentes camadas.
+- **AutoMapper**: Mapeamento automático entre modelos de domínio e DTOs.
+- **Entity Framework Core**: ORM para interação com o banco de dados.
+- **Injeção de Dependência**: Os serviços são injetados via construtor para melhor manutenção e testabilidade.
 
-JWT Authentication: Secure authentication using JSON Web Tokens.
+## Project Structure
 
-Clean Architecture: A modular structure ensuring separation of concerns.
+O projeto segue a arquitetura limpa, separando responsabilidades em diferentes camadas:
 
-Automapper Integration: Automatic mapping between domain models and DTOs.
-
-Entity Framework Core: ORM for database interactions and migrations.
-
-Constructor Dependency Injection: Services are injected through constructors for better maintainability and testability.
-
-Project Structure
-
-The project follows Clean Architecture, which separates concerns into different layers:
-
+```
 📂 src
- ├── 📂 Application  # Business logic and use cases
- │   ├── Services   # Service layer for business logic
- │   ├── DTOs       # Data Transfer Objects for input/output
- │   ├── Interfaces # Contracts for repositories and services
+ ├── 📂 Application    # Lógica de negócio e casos de uso
+ │   ├── Services     # Camada de serviço
+ │   ├── DTOs         # Objetos de Transferência de Dados
+ │   ├── Interfaces   # Contratos para repositórios e serviços
  │
- ├── 📂 Domain      # Core entities and business rules
- │   ├── Entities   # Domain models representing database tables
- │   ├── Enums      # Enumerations used across the domain
+ ├── 📂 Domain        # Regras de negócio e entidades principais
+ │   ├── Entities     # Modelos de domínio
+ │   ├── Enums        # Enumerações utilizadas no domínio
  │
- ├── 📂 Infrastructure # Data access and external integrations
- │   ├── Persistence  # Entity Framework context and repositories
- │   ├── Mappings     # AutoMapper configurations
- │   ├── JWT          # JWT Authentication implementation
+ ├── 📂 Infrastructure # Acesso a dados e integrações externas
+ │   ├── Persistence  # Contexto do Entity Framework e repositórios
+ │   ├── Mappings     # Configurações do AutoMapper
+ │   ├── JWT          # Implementação da autenticação JWT
  │
- ├── 📂 API         # Entry point of the application (Controllers, Middleware)
- │   ├── Controllers  # Exposes endpoints to the clients
- │   ├── Middleware   # Global error handling and logging
- │   ├── Program.cs   # Configures DI, services, and middleware
+ ├── 📂 API           # Ponto de entrada da aplicação
+ │   ├── Controllers  # Endpoints expostos
+ │   ├── Middleware   # Tratamento global de erros e logging
+ │   ├── Program.cs   # Configuração de DI, serviços e middleware
+```
 
-Key Components
+## Key Components
 
-1. Error Handling Middleware
+### Middleware de Tratamento de Erros
 
-A custom middleware intercepts requests, handling exceptions globally and returning standardized responses.
+O middleware intercepta requisições, tratando exceções globalmente e padronizando respostas:
 
-  public class UnauthorizedMiddleware
-  {
-      private readonly RequestDelegate _next;
+```csharp
+public class UnauthorizedMiddleware
+{
+    private readonly RequestDelegate _next;
 
-      public UnauthorizedMiddleware(RequestDelegate next)
-      {
-          _next = next;
-      }
-
-      public async Task Invoke(HttpContext httpContext)
-      {
-          await _next(httpContext);
-
-          if (httpContext.Response.StatusCode == (int)HttpStatusCode.Unauthorized)
-          {
-              httpContext.Response.ContentType = "application/json";
-              var result = System.Text.Json.JsonSerializer.Serialize(new { message = $"Acesso negado. Código: {(int)HttpStatusCode.Unauthorized}",
-                                                                           success = false});
-              await httpContext.Response.WriteAsync(result);
-          }
-      }
-  }
-
-  public static class MiddlewareExtensions
-  {
-      public static IApplicationBuilder UseCustomMiddleware(this IApplicationBuilder builder)
-      {
-          return builder.UseMiddleware<UnauthorizedMiddleware>();
-      }
-  }
-
-2. JWT Authentication
-
-Implemented JWT authentication to ensure secure access to API endpoints.
-
-    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(x =>
+    public UnauthorizedMiddleware(RequestDelegate next)
     {
-        x.RequireHttpsMetadata = false;
-        x.SaveToken = true;
-        x.TokenValidationParameters = new TokenValidationParameters
+        _next = next;
+    }
+
+    public async Task Invoke(HttpContext httpContext)
+    {
+        await _next(httpContext);
+
+        if (httpContext.Response.StatusCode == (int)HttpStatusCode.Unauthorized)
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = "CriptoBank",
-            ValidAudience = "CriptoBank",
-            IssuerSigningKey = new SymmetricSecurityKey(key),
-            ClockSkew = TimeSpan.Zero 
-        };
-    });
-
-3. AutoMapper for DTO Mapping
-
-Used AutoMapper to convert domain models into DTOs, avoiding exposure of internal models.
-
-public class MappingProfile : Profile
-{
-    public MappingProfile()
-    {
-        CreateMap<Transaction, TransactionDTO>();
-        CreateMap<TransactionDTO, Transaction>();
+            httpContext.Response.ContentType = "application/json";
+            var result = JsonSerializer.Serialize(new { message = "Acesso negado", success = false });
+            await httpContext.Response.WriteAsync(result);
+        }
     }
 }
+```
 
-4. Entity Framework & Migrations
+Registro do middleware no `Program.cs`:
 
-Used Entity Framework Core for data persistence, applying migrations automatically.
+```csharp
+app.UseMiddleware<UnauthorizedMiddleware>();
+```
 
-public class ApplicationDbContext : DbContext
+### Autenticação JWT
+
+Implementação do JWT para garantir acesso seguro:
+
+```csharp
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+.AddJwtBearer(x =>
 {
-    public DbSet<Transaction> Transactions { get; set; }
-
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-        : base(options)
+    x.RequireHttpsMetadata = false;
+    x.SaveToken = true;
+    x.TokenValidationParameters = new TokenValidationParameters
     {
-    }
-}
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = "CriptoBank",
+        ValidAudience = "CriptoBank",
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ClockSkew = TimeSpan.Zero
+    };
+});
+```
 
-# Apply database migrations
-dotnet ef migrations add InitialCreate
+### Endpoints
 
-dotnet ef database update
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `POST` | `/api/auth/login` | Autentica um usuário e retorna um token JWT. |
+| `POST` | `/api/auth/register` | Cria um novo usuário. |
+| `GET` | `/api/transactions` | Retorna todas as transações do usuário autenticado. |
+| `POST` | `/api/transactions` | Cria uma nova transação. |
+| `GET` | `/api/transactions/{id}` | Obtém detalhes de uma transação específica. |
 
-5. Constructor Dependency Injection
+## Running the API
 
-All services are injected via constructor dependency injection, ensuring loose coupling.
+### Requisitos
 
-public class TransactionService : ITransactionService
-{
-    private readonly ITransactionRepository _transactionRepository;
+- .NET SDK 7.0+
+- SQL Server ou PostgreSQL (configurado no `appsettings.json`)
+- Postman ou cURL para testar endpoints
 
-    public TransactionService(ITransactionRepository transactionRepository)
-    {
-        _transactionRepository = transactionRepository;
-    }
-}
+### Instalação & Execução
 
-Running the API
+Clone o repositório:
+```sh
+git clone https://github.com/seuusuario/CriptoBank.git
+cd CriptoBank
+```
 
-Prerequisites
-
-.NET SDK 7.0+
-
-SQL Server or PostgreSQL (configured in appsettings.json)
-
-Postman or cURL for testing endpoints
-
-Installation & Execution
-
-Clone the repository:
-
-git clone https://github.com/yourusername/BankTransactionsAPI.git
-cd BankTransactionsAPI
-
-Restore dependencies:
-
+Restaure as dependências:
+```sh
 dotnet restore
+```
 
-Run database migrations:
-
+Rode as migrações do banco de dados:
+```sh
 dotnet ef database update
+```
 
-Start the application:
-
+Inicie a aplicação:
+```sh
 dotnet run
+```
 
-Future Enhancements
+## Future Enhancements
 
-Implement caching for frequent queries
+- Implementação de cache para consultas frequentes.
+- Integração com API de cotação em tempo real do Ethereum.
+- Implementação de autorização baseada em papéis.
 
-Integrate real-time Ethereum pricing API
+## Author
 
-Add role-based authorization
-
-Author
-
-Developed by Diego Paredes as part of a Computer Science TCC Project.
+Desenvolvido por **Diego Paredes** como parte de um projeto de TCC em Ciência da Computação.
 
